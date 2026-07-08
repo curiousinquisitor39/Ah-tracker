@@ -1,0 +1,7 @@
+[build]
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/fetch-ical"
+  to = "/.netlify/functions/fetch-ical"
+  status = 200
