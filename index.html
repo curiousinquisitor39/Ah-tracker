@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>AH Tracker — LAS Annualised Hours</title>
+  <meta name="description" content="LAS Annualised Hours compliance tracker">
+  <meta name="theme-color" content="#0d2137">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="AH Tracker">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <style>
+    :root {
+      --navy:    #0d2137;
+      --navy2:   #1a3c5e;
+      --teal:    #0e7c6b;
+      --teal2:   #12a98f;
+      --amber:   #e8a020;
+      --red:     #c0392b;
+      --green:   #1e8449;
+      --green-bg:#d5f0e0;
+      --amber-bg:#fef3cd;
+      --red-bg:  #fde8e8;
+      --blue-bg: #e8f0fe;
+      --grey:    #f4f6f9;
+      --mid:     #8a9bb0;
+      --text:    #1a2535;
+      --white:   #ffffff;
+      --card-radius: 12px;
+      --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'SF Mono', 'Fira Code', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--grey);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--navy);
+      color: var(--white);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    header h1 {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    header span { font-size: 11px; color: var(--mid); display: block; margin-top: 2px; }
+    .refresh-btn {
+      background: var(--teal);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .refresh-btn:active { opacity: 0.8; }
+    .refresh-btn.loading { opacity: 0.6; pointer-events: none; }
+
+    /* ── TABS ── */
+    nav {
+      background: var(--navy2);
+      display: flex;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    nav::-webkit-scrollbar { display: none; }
+    nav button {
+      flex: 0 0 auto;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.6);
+      padding: 12px 18px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      white-space: nowrap;
+    }
+    nav button.active {
+      color: var(--white);
+      border-bottom-color: var(--teal2);
+    }
+
+    /* ── MAIN ── */
+    main { padding: 16px; max-width: 600px; margin: 0 auto; }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── SETUP SCREEN ── */
+    .setup-screen {
+      background: var(--white);
+      border-radius: var(--card-radius);
+      padding: 24px 20px;
+      margin-bottom: 16px;
+    }
+    .setup-screen h2 {
+      font-size: 18px;
+      color: var(--navy2);
+      margin-bottom: 6px;
+    }
+    .setup-screen p {
+      font-size: 13px;
+      color: var(--mid);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--navy2);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .field input, .field select {
+      width: 100%;
+      border: 1.5px solid #dce3ed;
+      border-radius: 8px;
+      padding: 11px 14px;
+      font-size: 14px;
+      font-family: var(--font-body);
+      color: var(--text);
+      background: var(--white);
+      outline: none;
+    }
+    .field input:focus, .field select:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(14,124,107,0.12);
+    }
+    .field .hint {
+      font-size: 11px;
+      color: var(--mid);
+      margin-top: 5px;
+      line-height: 1.4;
+    }
+    .field .hint a { color: var(--teal); text-decoration: none; }
+    .primary-btn {
+      width: 100%;
+      background: var(--teal);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .primary-btn:active { opacity: 0.85; }
+    .section-divider {
+      border: none;
+      border-top: 1px solid #eaeff5;
+      margin: 20px 0;
+    }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--white);
+      border-radius: var(--card-radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--mid);
+      margin-bottom: 10px;
+    }
+    .big-number {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--navy);
+      line-height: 1;
+    }
+    .big-label {
+      font-size: 12px;
+      color: var(--mid);
+      margin-top: 4px;
+    }
+
+    /* ── STATUS PILL ── */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .pill.green { background: var(--green-bg); color: var(--green); }
+    .pill.amber { background: var(--amber-bg); color: #9a6400; }
+    .pill.red   { background: var(--red-bg);   color: var(--red); }
+    .pill.blue  { background: var(--blue-bg);  color: var(--navy2); }
+
+    /* ── PROGRESS BAR ── */
+    .progress-wrap { margin: 10px 0; }
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--mid);
+      margin-bottom: 5px;
+    }
+    .progress-bar {
+      height: 8px;
+      background: #eaeff5;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+    .progress-fill.green { background: var(--teal2); }
+    .progress-fill.amber { background: var(--amber); }
+    .progress-fill.red   { background: var(--red); }
+
+    /* ── STAT ROWS ── */
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #f0f3f7;
+      font-size: 13px;
+    }
+    .stat-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .stat-row .label { color: var(--mid); }
+    .stat-row .value { font-weight: 600; color: var(--navy); }
+    .stat-row .value.green { color: var(--green); }
+    .stat-row .value.amber { color: #9a6400; }
+    .stat-row .value.red   { color: var(--red); }
+
+    /* ── TWO COL GRID ── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+
+    /* ── BH TABLE ── */
+    .bh-row {
+      display: grid;
+      grid-template-columns: 1fr 80px 70px 70px;
+      gap: 4px;
+      padding: 9px 0;
+      border-bottom: 1px solid #f0f3f7;
+      font-size: 12px;
+      align-items: center;
+    }
+    .bh-row:last-child { border-bottom: none; }
+    .bh-row.header {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--mid);
+      padding-bottom: 6px;
+    }
+    .bh-row.festive { background: #fffbee; border-radius: 6px; padding: 9px 6px; margin: 0 -6px; }
+    .bh-name { font-weight: 500; color: var(--navy); }
+    .bh-badge {
+      text-align: center;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .bh-badge.booked { background: var(--blue-bg); color: var(--navy2); }
+    .bh-badge.worked { background: var(--green-bg); color: var(--green); }
+    .bh-badge.empty  { color: var(--mid); }
+
+    /* ── FORECAST HIGHLIGHT ── */
+    .forecast-hero {
+      background: linear-gradient(135deg, var(--navy2), var(--teal));
+      color: white;
+      border-radius: var(--card-radius);
+      padding: 20px;
+      margin-bottom: 12px;
+    }
+    .forecast-hero .big-number { color: white; }
+    .forecast-hero .big-label  { color: rgba(255,255,255,0.7); }
+    .forecast-hero .sub {
+      margin-top: 14px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.85);
+      line-height: 1.5;
+    }
+
+    /* ── ALERT BOX ── */
+    .alert {
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+    .alert.green { background: var(--green-bg); color: var(--green); border-left: 3px solid var(--green); }
+    .alert.amber { background: var(--amber-bg); color: #9a6400; border-left: 3px solid var(--amber); }
+    .alert.red   { background: var(--red-bg);   color: var(--red);  border-left: 3px solid var(--red); }
+    .alert.blue  { background: var(--blue-bg);  color: var(--navy2); border-left: 3px solid var(--navy2); }
+
+    /* ── LOADING ── */
+    .loading-screen {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--mid);
+    }
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid #eaeff5;
+      border-top-color: var(--teal);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── ERROR ── */
+    .error-box {
+      background: var(--red-bg);
+      color: var(--red);
+      border-radius: 10px;
+      padding: 16px;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+
+    /* ── LAST UPDATED ── */
+    .last-updated {
+      text-align: center;
+      font-size: 11px;
+      color: var(--mid);
+      padding: 8px 0 16px;
+    }
+
+    /* ── SHIFT LIST ── */
+    .shift-row {
+      display: grid;
+      grid-template-columns: 48px 1fr auto;
+      gap: 8px;
+      padding: 10px 0;
+      border-bottom: 1px solid #f0f3f7;
+      align-items: center;
+    }
+    .shift-row:last-child { border-bottom: none; }
+    .shift-date-box {
+      text-align: center;
+      background: var(--navy2);
+      color: white;
+      border-radius: 8px;
+      padding: 5px 4px;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+    .shift-date-box .day { font-size: 9px; font-weight: 500; opacity: 0.8; }
+    .shift-info { min-width: 0; }
+    .shift-title { font-size: 13px; font-weight: 600; color: var(--navy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .shift-sub { font-size: 11px; color: var(--mid); margin-top: 2px; }
+    .shift-right { text-align: right; flex-shrink: 0; }
+    .shift-hrs { font-size: 13px; font-weight: 700; color: var(--navy); }
+    .shift-type-badge {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-weight: 600;
+      margin-top: 3px;
+      display: inline-block;
+    }
+    .badge-night   { background: #1a237e22; color: #1a237e; }
+    .badge-weekend { background: #e65100222; color: #e65100; }
+    .badge-nightwk { background: #4a148c22; color: #4a148c; }
+    .badge-day     { background: #f0f3f7; color: var(--mid); }
+    .badge-training{ background: #1b5e2022; color: #1b5e20; }
+    .badge-csr     { background: #0d47a122; color: #0d47a1; }
+    .shift-future  { opacity: 0.55; }
+    .shifts-filter {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding-bottom: 2px;
+    }
+    .shifts-filter::-webkit-scrollbar { display: none; }
+    .filter-btn {
+      flex: 0 0 auto;
+      background: var(--white);
+      border: 1.5px solid #dce3ed;
+      border-radius: 20px;
+      padding: 5px 11px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--mid);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .filter-btn.active {
+      background: var(--navy2);
+      border-color: var(--navy2);
+      color: white;
+    }
+
+    /* ── SETTINGS PAGE ── */
+    .settings-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--mid);
+      margin: 20px 0 10px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🚑 AH Tracker</h1>
+    <span id="header-sub">LAS Annualised Hours</span>
+  </div>
+  <button class="refresh-btn" id="refresh-btn" onclick="refreshData()">
+    ↻ Refresh
+  </button>
+</header>
+
+<nav id="main-nav" style="display:none">
+  <button class="active" onclick="showTab('dashboard')">📊 Summary</button>
+  <button onclick="showTab('forecast')">🔮 Forecast</button>
+  <button onclick="showTab('bankhols')">🏖️ Bank Hols</button>
+  <button onclick="showTab('shifts')">📋 Shifts</button>
+  <button onclick="showTab('settings')">⚙️ Settings</button>
+</nav>
+
+<main>
+
+  <!-- ── SETUP SCREEN ── -->
+  <div id="setup-screen">
+    <div class="setup-screen">
+      <h2>Welcome to AH Tracker</h2>
+      <p>Track your LAS Annualised Hours compliance — shifts, nights, weekends, and bank holidays — all in one place.</p>
+
+      <div class="alert blue" style="margin-bottom:16px">
+        <strong>How to get your GRS calendar link:</strong><br><br>
+        1. Log into <strong>GRS Mobile</strong><br>
+        2. Tap the <strong>☰ menu</strong> (3 lines, top left)<br>
+        3. Tap <strong>GRS Calendar</strong><br>
+        4. Tap <strong>Request Calendar</strong> — this sends an email to your NHS address<br>
+        5. Open the email and copy the calendar link from the <strong>Android</strong> section<br>
+        6. Paste it below ↓
+      </div>
+
+      <div class="field">
+        <label>Your GRS iCal Link</label>
+        <input type="url" id="ical-url" placeholder="https://grsmob.londonambulance.nhs.uk/grscal/api/ical/..." />
+        <p class="hint">⚠️ Treat this link like a password — it gives access to your shift data. It is stored only on this device and never sent to any server.</p>
+      </div>
+
+      <hr class="section-divider">
+      <p style="font-size:13px;color:var(--mid);margin-bottom:16px;">Enter your contract details from your AH arrangement letter.</p>
+
+      <div class="field">
+        <label>Arrangement Start Date</label>
+        <input type="date" id="start-date" />
+      </div>
+
+      <div class="two-col">
+        <div class="field">
+          <label>Weekly Hours</label>
+          <input type="number" id="weekly-hours" value="37.5" step="0.01" />
+        </div>
+        <div class="field">
+          <label>AL Entitlement (hrs)</label>
+          <input type="number" id="al-hours" value="294.72" step="0.01" />
+          <p class="hint">Inc. pro-rata adj.</p>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="field">
+          <label>BH Deduction (hrs)</label>
+          <input type="number" id="bh-deduction" value="60" step="0.5" />
+        </div>
+        <div class="field">
+          <label>Standard Shift (hrs)</label>
+          <input type="number" id="shift-hours" value="11.5" step="0.5" />
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="field">
+          <label>Training Shift (hrs)</label>
+          <input type="number" id="training-hours" value="10.5" step="0.5" />
+        </div>
+        <div class="field">
+          <label>CSR Shift (hrs)</label>
+          <input type="number" id="csr-hours" value="7.5" step="0.5" />
+        </div>
+      </div>
+
+      <button class="primary-btn" onclick="saveAndLoad()">Get Started →</button>
+    </div>
+  </div>
+
+  <!-- ── DASHBOARD TAB ── -->
+  <div id="tab-dashboard" class="tab-content active" style="display:none">
+    <div id="dashboard-content"></div>
+  </div>
+
+  <!-- ── FORECAST TAB ── -->
+  <div id="tab-forecast" class="tab-content" style="display:none">
+    <div id="forecast-content"></div>
+  </div>
+
+  <!-- ── BANK HOLS TAB ── -->
+  <div id="tab-bankhols" class="tab-content" style="display:none">
+    <div id="bankhols-content"></div>
+  </div>
+
+  <!-- ── SHIFTS TAB ── -->
+  <div id="tab-shifts" class="tab-content" style="display:none">
+    <div id="shifts-content"></div>
+  </div>
+
+  <!-- ── SETTINGS TAB ── -->
+  <div id="tab-settings" class="tab-content" style="display:none">
+    <div id="settings-content"></div>
+  </div>
+
+</main>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// CONFIG & STORAGE
+// ═══════════════════════════════════════════════════════
+
+const STORAGE_KEY = 'ah_tracker_config';
+
+function saveConfig(cfg) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+}
+
+function loadConfig() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+// ═══════════════════════════════════════════════════════
+// BANK HOLIDAYS
+// ═══════════════════════════════════════════════════════
+
+const BH_LIST = [
+  { name: 'Summer Bank Holiday',            date: '2026-08-31', festiveY1: false, festiveY2: false },
+  { name: 'Christmas Day',                  date: '2026-12-25', festiveY1: true,  festiveY2: false },
+  { name: "Boxing Day (sub. 28 Dec)",       date: '2026-12-28', festiveY1: true,  festiveY2: false },
+  { name: "New Year's Eve night (31 Dec)",  date: '2026-12-31', festiveY1: true,  festiveY2: false },
+  { name: "New Year's Day",                 date: '2027-01-01', festiveY1: true,  festiveY2: false },
+  { name: 'Good Friday',                    date: '2027-03-26', festiveY1: false, festiveY2: true  },
+  { name: 'Easter Monday',                  date: '2027-03-29', festiveY1: false, festiveY2: true  },
+  { name: 'Early May Bank Holiday',         date: '2027-05-03', festiveY1: false, festiveY2: false },
+  { name: 'Spring Bank Holiday',            date: '2027-05-31', festiveY1: false, festiveY2: false },
+  { name: 'Summer Bank Holiday 2027',       date: '2027-08-30', festiveY1: false, festiveY2: false },
+  { name: "Christmas Day (sub. 27 Dec)",    date: '2027-12-27', festiveY1: true,  festiveY2: false },
+  { name: "Boxing Day (sub. 28 Dec 2027)",  date: '2027-12-28', festiveY1: true,  festiveY2: false },
+];
+
+function getAHYear(startDate) {
+  const now = new Date();
+  if (now < startDate) return 1;
+  const msPerYear = 365.25 * 24 * 60 * 60 * 1000;
+  return Math.floor((now - startDate) / msPerYear) + 1;
+}
+
+function isFestive(bhDate, ahYear) {
+  const bh = BH_LIST.find(b => b.date === bhDate);
+  if (!bh) return false;
+  return ahYear % 2 === 1 ? bh.festiveY1 : bh.festiveY2;
+}
+
+function isBankHoliday(dateStr) {
+  return BH_LIST.some(b => b.date === dateStr);
+}
+
+// ═══════════════════════════════════════════════════════
+// ICAL PARSER
+// ═══════════════════════════════════════════════════════
+
+function parseIcal(text) {
+  const events = [];
+  const blocks = text.split('BEGIN:VEVENT');
+  blocks.shift();
+
+  for (const block of blocks) {
+    const get = (key) => {
+      const regex = new RegExp(`${key}[^:]*:([^\\r\\n]+)`, 'i');
+      const m = block.match(regex);
+      return m ? m[1].trim() : '';
+    };
+
+    const dtstart = get('DTSTART');
+    const dtend   = get('DTEND');
+    const summary = get('SUMMARY').replace(/\\n/g, ' ').replace(/\\,/g, ',');
+    const desc    = get('DESCRIPTION').replace(/\\n/g, '\n').replace(/\\,/g, ',');
+    const loc     = get('LOCATION').replace(/\\,/g, ',');
+
+    if (!dtstart || !summary) continue;
+
+    // Parse datetime — handle both date-only and datetime formats
+    const parseDateTime = (dt) => {
+      if (!dt) return null;
+      // TZID format or Z format
+      const clean = dt.replace(/[TZ]/g, (m, o) => m === 'T' ? 'T' : '');
+      if (dt.length === 8) {
+        // Date only: YYYYMMDD
+        return new Date(
+          parseInt(dt.slice(0,4)),
+          parseInt(dt.slice(4,6)) - 1,
+          parseInt(dt.slice(6,8))
+        );
+      }
+      // Datetime: YYYYMMDDTHHmmss
+      const d = dt.replace('T', '').replace('Z', '');
+      return new Date(
+        parseInt(d.slice(0,4)),
+        parseInt(d.slice(4,6)) - 1,
+        parseInt(d.slice(6,8)),
+        parseInt(d.slice(8,10) || 0),
+        parseInt(d.slice(10,12) || 0),
+        0
+      );
+    };
+
+    const start = parseDateTime(dtstart);
+    const end   = parseDateTime(dtend);
+    if (!start) continue;
+
+    events.push({ summary, desc, loc, start, end });
+  }
+  return events;
+}
+
+function formatDateStr(d) {
+  // Returns yyyy-MM-dd
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function formatTime(d) {
+  if (!d) return '';
+  return String(d.getHours()).padStart(2,'0') + String(d.getMinutes()).padStart(2,'0');
+}
+
+function formatDateDisplay(dateStr) {
+  const [y, m, d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+// ═══════════════════════════════════════════════════════
+// SHIFT PROCESSING
+// ═══════════════════════════════════════════════════════
+
+function processEvents(events, cfg) {
+  const startDate = new Date(cfg.startDate);
+  const endDate   = new Date(startDate);
+  endDate.setFullYear(endDate.getFullYear() + 1);
+
+  const rawShifts = [];
+
+  for (const ev of events) {
+    const { summary, desc, start, end } = ev;
+    const dateStr = formatDateStr(start);
+    const d = new Date(dateStr);
+
+    // Only within arrangement year
+    if (d < startDate || d >= endDate) continue;
+
+    // Skip rest days
+    if (desc.includes('Callsign: REST DAY') || summary.toUpperCase().includes('REST DAY')) continue;
+
+    // Skip annual leave
+    if (summary.toUpperCase().includes('ANNUAL LEAVE') || desc.toUpperCase().includes('ANNUAL LEAVE,(AL)')) continue;
+
+    // Must have valid shift time or be TRAIN/CSR
+    const hasTime    = /\d{4}-\d{4}/.test(summary);
+    const isTrain    = summary.toUpperCase().includes('TRAIN') || desc.includes('Callsign: TRAINING');
+    const isCSR      = desc.includes('Callsign: CSR');
+    const isMeeting  = !hasTime && !isTrain && !isCSR;
+    if (isMeeting) continue;
+
+    // Determine hours
+    let hours = cfg.shiftHours;
+    if (isTrain) hours = cfg.trainingHours;
+    else if (isCSR) hours = cfg.csrHours;
+
+    // Parse time from title first so it's available for night detection
+    const timeMatch = summary.match(/(\d{4})-(\d{4})/);
+
+    // Night shift detection — use the title time string (HHMM-HHMM) directly
+    // since parsed Date objects may have timezone offsets applied.
+    // A night shift ends after 0500 and started the previous evening.
+    let isNight = false;
+    if (timeMatch) {
+      const startHHMM = parseInt(timeMatch[1]); // e.g. 1900
+      const endHHMM   = parseInt(timeMatch[2]); // e.g. 0700
+      // Night if: end time is earlier than start time (crosses midnight)
+      // AND end time is after 0500
+      isNight = endHHMM < startHHMM && endHHMM > 500;
+    } else if (end) {
+      // Fallback for events without HHMM-HHMM title
+      const crossesMidnight = end.getDate() !== start.getDate() ||
+                              end.getMonth() !== start.getMonth();
+      const endH = end.getHours();
+      const endM = end.getMinutes();
+      isNight = crossesMidnight && (endH > 5 || (endH === 5 && endM > 0));
+    }
+
+    // Weekend: starts or ends on Sat/Sun
+    const startDay = start.getDay();
+    const endDay   = end ? end.getDay() : startDay;
+    const isWeekend = [0,6].includes(startDay) || [0,6].includes(endDay);
+
+    // Bank holiday
+    const isBH     = isBankHoliday(dateStr);
+    const isFestBH = isFestive(dateStr, getAHYear(startDate));
+
+    // Start/end times from title
+    const startTime = timeMatch ? timeMatch[1].slice(0,2) + ':' + timeMatch[1].slice(2) : formatTime(start);
+    const endTime   = timeMatch ? timeMatch[2].slice(0,2) + ':' + timeMatch[2].slice(2) : formatTime(end);
+
+    rawShifts.push({
+      date: dateStr, dateObj: d,
+      summary, desc, startTime, endTime,
+      hours, isNight, isWeekend, isBH, isFestBH,
+      isTrain, isCSR,
+      type: isTrain ? 'Training' : isCSR ? 'CSR' :
+            (isNight && isWeekend) ? 'Night + Weekend' :
+            isNight ? 'Night' : isWeekend ? 'Weekend' : 'Day',
+    });
+  }
+
+  // ── DEDUPLICATION ──
+  const groups = {};
+  rawShifts.forEach(s => {
+    if (!groups[s.date]) groups[s.date] = [];
+    groups[s.date].push(s);
+  });
+
+  const shifts = [];
+  Object.values(groups).forEach(grp => {
+    if (grp.length === 1) { shifts.push(grp[0]); return; }
+
+    const hasTrain = grp.some(s => s.isTrain);
+    const hasCSR   = grp.some(s => s.isCSR);
+
+    if (hasTrain && hasCSR) {
+      const csr = grp.find(s => s.isCSR);
+      shifts.push({ ...csr, hours: cfg.trainingHours, isTrain: true, isCSR: false,
+                    summary: 'TRAINING (CSR day)', type: 'Training (CSR day)' });
+      return;
+    }
+
+    // Remove identical duplicates
+    const seen = new Set();
+    grp.forEach(s => {
+      const key = `${s.summary}-${s.startTime}`;
+      if (!seen.has(key)) { seen.add(key); shifts.push(s); }
+    });
+  });
+
+  shifts.sort((a, b) => a.dateObj - b.dateObj);
+  return { shifts, startDate, endDate };
+}
+
+// ═══════════════════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════════════════
+
+function calculateStats(shifts, startDate, endDate, cfg) {
+  const now      = new Date();
+  const grossHrs = cfg.weeklyHours * 52.14;
+  const netHrs   = grossHrs - cfg.alHours - cfg.bhDeduction;
+
+  const nightTarget   = netHrs * 0.20;
+  const weekendTarget = netHrs * 0.25;
+
+  const yearMs    = endDate - startDate;
+  const started   = now >= startDate;
+  const elapsedMs = started ? Math.min(now - startDate, yearMs) : 0;
+  const progress  = started ? elapsedMs / yearMs : 0;
+
+  const proRata        = netHrs * progress;
+  const proRataNight   = nightTarget * progress;
+  const proRataWeekend = weekendTarget * progress;
+
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  const workedShifts    = shifts.filter(s => s.dateObj <= today);
+  const scheduledShifts = shifts.filter(s => s.dateObj > today);
+
+  const workedHours    = workedShifts.reduce((s, x) => s + x.hours, 0);
+  const scheduledHours = scheduledShifts.reduce((s, x) => s + x.hours, 0);
+  const totalHours     = workedHours + scheduledHours;
+
+  const workedNightHrs   = workedShifts.filter(s => s.isNight).reduce((s, x) => s + x.hours, 0);
+  const workedWeekendHrs = workedShifts.filter(s => s.isWeekend).reduce((s, x) => s + x.hours, 0);
+  const totalNightHrs    = shifts.filter(s => s.isNight).reduce((s, x) => s + x.hours, 0);
+  const totalWeekendHrs  = shifts.filter(s => s.isWeekend).reduce((s, x) => s + x.hours, 0);
+
+  const bhWorked   = workedShifts.filter(s => s.isBH).length;
+  const festWorked = workedShifts.filter(s => s.isFestBH).length;
+  const bhBooked   = shifts.filter(s => s.isBH).length;
+
+  const ahYear       = getAHYear(startDate);
+  const wte          = cfg.weeklyHours / 37.5;
+  const bhRequired   = wte >= 0.75 ? 4 : wte >= 0.50 ? 3 : wte >= 0.25 ? 2 : 1;
+  const leeway       = cfg.weeklyHours * 2;
+
+  // Quarterly
+  const monthsElapsed  = started ? (now - startDate) / (1000 * 60 * 60 * 24 * 30.44) : 0;
+  const currentQ       = started ? Math.min(Math.floor(monthsElapsed / 3) + 1, 4) : 1;
+  const qTarget        = netHrs / 4;
+  const qStart         = new Date(startDate);
+  qStart.setMonth(qStart.getMonth() + (currentQ - 1) * 3);
+  const qEnd = new Date(qStart);
+  qEnd.setMonth(qEnd.getMonth() + 3);
+  const qWorked = workedShifts.filter(s => s.dateObj >= qStart && s.dateObj < qEnd)
+                              .reduce((s, x) => s + x.hours, 0);
+
+  return {
+    grossHrs, netHrs, ahYear, wte, bhRequired,
+    nightTarget, weekendTarget, leeway,
+    progress, started, proRata, proRataNight, proRataWeekend,
+    workedHours, scheduledHours, totalHours,
+    workedNightHrs, workedWeekendHrs, totalNightHrs, totalWeekendHrs,
+    nightPct:   workedHours > 0 ? (workedNightHrs / workedHours * 100) : 0,
+    weekendPct: workedHours > 0 ? (workedWeekendHrs / workedHours * 100) : 0,
+    bhWorked, festWorked, bhBooked,
+    hoursAhead: workedHours - proRata,
+    currentQ, qTarget, qWorked,
+    shifts, workedShifts, scheduledShifts,
+    startDate, endDate,
+  };
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER HELPERS
+// ═══════════════════════════════════════════════════════
+
+function statusPill(val, target, leeway) {
+  if (!val && val !== 0) return '<span class="pill blue">Not started</span>';
+  const diff = val - target;
+  if (diff >= 0) return '<span class="pill green">✓ On track</span>';
+  if (diff >= -leeway) return '<span class="pill amber">⚠ Slight deficit</span>';
+  return '<span class="pill red">✗ Behind</span>';
+}
+
+function pctPill(pct, target) {
+  if (pct >= target) return `<span class="pill green">✓ ${pct.toFixed(1)}%</span>`;
+  if (pct >= target * 0.85) return `<span class="pill amber">⚠ ${pct.toFixed(1)}%</span>`;
+  return `<span class="pill red">✗ ${pct.toFixed(1)}%</span>`;
+}
+
+function bar(pct, cls) {
+  const w = Math.min(pct, 100).toFixed(1);
+  return `<div class="progress-bar"><div class="progress-fill ${cls}" style="width:${w}%"></div></div>`;
+}
+
+function fmt(n) { return n.toFixed(1); }
+
+// ═══════════════════════════════════════════════════════
+// RENDER DASHBOARD
+// ═══════════════════════════════════════════════════════
+
+function renderDashboard(st, cfg) {
+  const hoursAheadStr = st.hoursAhead >= 0
+    ? `<span class="value green">+${fmt(st.hoursAhead)} hrs ahead</span>`
+    : `<span class="value red">${fmt(st.hoursAhead)} hrs behind</span>`;
+
+  const nightPct   = st.nightPct;
+  const weekendPct = st.weekendPct;
+  const nightCls   = nightPct >= 20 ? 'green' : nightPct >= 17 ? 'amber' : 'red';
+  const wkndCls    = weekendPct >= 25 ? 'green' : weekendPct >= 21 ? 'amber' : 'red';
+  const hrsAheadCls = st.hoursAhead >= 0 ? 'green' : st.hoursAhead >= -st.leeway ? 'amber' : 'red';
+
+  const notStarted = !st.started;
+  const proRataDisplay = notStarted ? '—' : fmt(st.proRata) + ' hrs';
+
+  return `
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">Net Target</div>
+        <div class="big-number">${fmt(st.netHrs)}</div>
+        <div class="big-label">hours to work</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Worked</div>
+        <div class="big-number">${fmt(st.workedHours)}</div>
+        <div class="big-label">hrs actually worked</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Overall Hours</div>
+      <div class="stat-row">
+        <span class="label">Pro-rata target (today)</span>
+        <span class="value">${proRataDisplay}</span>
+      </div>
+      <div class="stat-row">
+        <span class="label">Currently</span>
+        ${hoursAheadStr}
+      </div>
+      <div class="stat-row">
+        <span class="label">Scheduled (future)</span>
+        <span class="value">${fmt(st.scheduledHours)} hrs</span>
+      </div>
+      <div class="progress-wrap" style="margin-top:10px">
+        <div class="progress-label">
+          <span>Worked</span>
+          <span>${fmt(st.workedHours)} / ${fmt(st.netHrs)} hrs</span>
+        </div>
+        ${bar(st.workedHours / st.netHrs * 100, hrsAheadCls)}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Night Shifts — target 20% of worked hrs</div>
+      <div class="stat-row">
+        <span class="label">Night hours worked</span>
+        <span class="value">${fmt(st.workedNightHrs)} hrs</span>
+      </div>
+      <div class="stat-row">
+        <span class="label">Annual target</span>
+        <span class="value">${fmt(st.nightTarget)} hrs</span>
+      </div>
+      <div class="stat-row">
+        <span class="label">% of worked hours</span>
+        ${pctPill(nightPct, 20)}
+      </div>
+      <div class="progress-wrap" style="margin-top:10px">
+        ${bar(nightPct / 20 * 100, nightCls)}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Weekend Shifts — target 25% of worked hrs</div>
+      <div class="stat-row">
+        <span class="label">Weekend hours worked</span>
+        <span class="value">${fmt(st.workedWeekendHrs)} hrs</span>
+      </div>
+      <div class="stat-row">
+        <span class="label">Annual target</span>
+        <span class="value">${fmt(st.weekendTarget)} hrs</span>
+      </div>
+      <div class="stat-row">
+        <span class="label">% of worked hours</span>
+        ${pctPill(weekendPct, 25)}
+      </div>
+      <div class="progress-wrap" style="margin-top:10px">
+        ${bar(weekendPct / 25 * 100, wkndCls)}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Q${st.currentQ} Quarterly Compliance</div>
+      <div class="stat-row">
+        <span class="label">Q target</span>
+        <span class="value">${fmt(st.qTarget)} hrs</span>
+      </div>
+      <div class="stat-row">
+        <span class="label">Worked this quarter</span>
+        <span class="value">${fmt(st.qWorked)} hrs</span>
+      </div>
+      <div class="stat-row">
+        <span class="label">Status</span>
+        ${statusPill(st.qWorked, st.qTarget, st.leeway)}
+      </div>
+    </div>
+
+    <div class="last-updated">Last refreshed: ${new Date().toLocaleString('en-GB')}</div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER FORECAST
+// ═══════════════════════════════════════════════════════
+
+function renderForecast(st, cfg) {
+  const now = new Date();
+  const msRemaining    = Math.max(st.endDate - now, 0);
+  const weeksRemaining = msRemaining / (1000 * 60 * 60 * 24 * 7);
+  const hrsRemaining   = Math.max(st.netHrs - st.workedHours, 0);
+  const shiftsNeeded   = Math.ceil(hrsRemaining / cfg.shiftHours);
+  const shiftsPerWeek  = weeksRemaining > 0 ? hrsRemaining / cfg.shiftHours / weeksRemaining : 0;
+  const shiftsCanSkip  = st.hoursAhead > 0 ? Math.floor(st.hoursAhead / cfg.shiftHours) : 0;
+
+  const nightGap   = Math.max(st.nightTarget - st.workedNightHrs, 0);
+  const weekendGap = Math.max(st.weekendTarget - st.workedWeekendHrs, 0);
+  const nightShiftsLeft   = Math.ceil(nightGap / cfg.shiftHours);
+  const weekendShiftsLeft = Math.ceil(weekendGap / cfg.shiftHours);
+
+  let projStr = 'Insufficient data yet';
+  if (st.workedHours > 0 && st.progress > 0) {
+    const msElapsed = now - st.startDate;
+    const hrsPerMs  = st.workedHours / msElapsed;
+    if (hrsPerMs > 0) {
+      const msToEnd = hrsRemaining / hrsPerMs;
+      const proj    = new Date(now.getTime() + msToEnd);
+      const onTime  = proj <= st.endDate;
+      projStr = onTime
+        ? `✅ ${proj.toLocaleDateString('en-GB')} (on track)`
+        : `⚠️ ${proj.toLocaleDateString('en-GB')} — after year end`;
+    }
+  }
+
+  const positionAlert = st.hoursAhead >= 0
+    ? `<div class="alert green">You're <strong>${fmt(st.hoursAhead)} hrs ahead</strong> of your pro-rata target. You could afford to skip up to <strong>${shiftsCanSkip} shift${shiftsCanSkip !== 1 ? 's' : ''}</strong> right now.</div>`
+    : `<div class="alert ${st.hoursAhead >= -st.leeway ? 'amber' : 'red'}">You're <strong>${fmt(Math.abs(st.hoursAhead))} hrs behind</strong> your pro-rata target. You need to catch up before your next review.</div>`;
+
+  return `
+    <div class="forecast-hero">
+      <div class="big-number">${fmt(hrsRemaining)}</div>
+      <div class="big-label">hours remaining to work</div>
+      <div class="sub">
+        ${shiftsNeeded} standard shifts · ${Math.round(weeksRemaining)} weeks left<br>
+        ${shiftsPerWeek.toFixed(2)} shifts per week needed to stay on track
+      </div>
+    </div>
+
+    ${positionAlert}
+
+    <div class="card">
+      <div class="card-title">📋 What you need to do</div>
+      <div class="stat-row">
+        <span class="label">Hours still to work</span>
+        <span class="value">${fmt(hrsRemaining)} hrs</span>
+      </div>
+      <div class="stat-row">
+        <span class="label">Weeks remaining</span>
+        <span class="value">${Math.round(weeksRemaining)} weeks</span>
+      </div>
+      <div class="stat-row">
+        <span class="label">Shifts needed per week</span>
+        <span class="value">${shiftsPerWeek.toFixed(2)}/week</span>
+      </div>
+      <div class="stat-row">
+        <span class="label">Projected finish</span>
+        <span class="value" style="font-size:12px">${projStr}</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">💚 Flex available</div>
+      <div class="stat-row">
+        <span class="label">Hours ahead of pro-rata</span>
+        <span class="value ${st.hoursAhead >= 0 ? 'green' : 'red'}">${fmt(Math.max(st.hoursAhead,0))} hrs</span>
+      </div>
+      <div class="stat-row">
+        <span class="label">Shifts you can skip now</span>
+        <span class="value green">${shiftsCanSkip} shift${shiftsCanSkip !== 1 ? 's' : ''}</span>
+      </div>
+      <div class="stat-row">
+        <span class="label">Max leeway (contract)</span>
+        <span class="value">${fmt(st.leeway)} hrs / ${Math.floor(st.leeway / cfg.shiftHours)} shifts</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🌙📆 Nights & weekends still needed</div>
+      <div class="stat-row">
+        <span class="label">Night hours still needed</span>
+        <span class="value">${fmt(nightGap)} hrs (${nightShiftsLeft} shifts)</span>
+      </div>
+      <div class="stat-row">
+        <span class="label">Night shifts/week needed</span>
+        <span class="value">${weeksRemaining > 0 ? (nightShiftsLeft / weeksRemaining).toFixed(2) : '—'}/week</span>
+      </div>
+      <div class="stat-row">
+        <span class="label">Weekend hours still needed</span>
+        <span class="value">${fmt(weekendGap)} hrs (${weekendShiftsLeft} shifts)</span>
+      </div>
+      <div class="stat-row">
+        <span class="label">Weekend shifts/week needed</span>
+        <span class="value">${weeksRemaining > 0 ? (weekendShiftsLeft / weeksRemaining).toFixed(2) : '—'}/week</span>
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER BANK HOLIDAYS
+// ═══════════════════════════════════════════════════════
+
+function renderBankHols(st, cfg) {
+  const ahYear       = st.ahYear;
+  const isY1Festive  = ahYear % 2 === 1;
+  const startDate    = st.startDate;
+  const endDate      = st.endDate;
+
+  const workedDates  = new Set(st.workedShifts.filter(s => s.isBH).map(s => s.date));
+  const bookedDates  = new Set(st.shifts.filter(s => s.isBH).map(s => s.date));
+
+  const bhInYear = BH_LIST.filter(bh => {
+    const d = new Date(bh.date);
+    return d >= startDate && d < endDate;
+  });
+
+  const festiveReq = isY1Festive
+    ? "Christmas Day, Boxing Day (28 Dec), New Year's Eve night, or New Year's Day"
+    : 'Good Friday or Easter Monday';
+
+  const rows = bhInYear.map(bh => {
+    const isFest  = isY1Festive ? bh.festiveY1 : bh.festiveY2;
+    const booked  = bookedDates.has(bh.date);
+    const worked  = workedDates.has(bh.date);
+    return `
+      <div class="bh-row ${isFest ? 'festive' : ''}">
+        <div class="bh-name">${isFest ? '⭐ ' : ''}${bh.name}</div>
+        <div style="color:var(--mid);font-size:11px">${formatDateDisplay(bh.date)}</div>
+        <div>${booked ? '<span class="bh-badge booked">Booked</span>' : '<span class="bh-badge empty">—</span>'}</div>
+        <div>${worked ? '<span class="bh-badge worked">✓ Done</span>' : '<span class="bh-badge empty">—</span>'}</div>
+      </div>`;
+  }).join('');
+
+  const bhRemaining = Math.max(st.bhRequired - st.bhWorked, 0);
+  const festDone    = st.festWorked >= 1;
+
+  return `
+    <div class="card">
+      <div class="card-title">Year ${ahYear} — Festive Requirement</div>
+      <div class="alert ${festDone ? 'green' : 'amber'}" style="margin:0">
+        ${festDone
+          ? '✅ Met — you have worked a qualifying festive bank holiday'
+          : `⭐ Must work at least one of: ${festiveReq}`}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Bank Holiday Schedule</div>
+      <div class="bh-row header">
+        <div>Name</div><div>Date</div><div>Booked</div><div>Worked</div>
+      </div>
+      ${rows}
+    </div>
+
+    <div class="card">
+      <div class="card-title">Summary</div>
+      <div class="stat-row">
+        <span class="label">Required this year</span>
+        <span class="value">${st.bhRequired} bank holidays</span>
+      </div>
+      <div class="stat-row">
+        <span class="label">Booked (inc. future)</span>
+        <span class="value">${st.bhBooked}</span>
+      </div>
+      <div class="stat-row">
+        <span class="label">Worked</span>
+        <span class="value ${st.bhWorked >= st.bhRequired ? 'green' : ''}">${st.bhWorked} of ${st.bhRequired}</span>
+      </div>
+      <div class="stat-row">
+        <span class="label">Still needed</span>
+        <span class="value ${bhRemaining === 0 ? 'green' : 'amber'}">${bhRemaining === 0 ? '✓ Complete' : `${bhRemaining} more`}</span>
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER SHIFTS
+// ═══════════════════════════════════════════════════════
+
+let shiftsFilter = 'all';
+
+function renderShifts(st) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const days  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  const filters = [
+    { key: 'all',      label: 'All' },
+    { key: 'worked',   label: 'Worked' },
+    { key: 'scheduled',label: 'Upcoming' },
+    { key: 'night',    label: '🌙 Night' },
+    { key: 'weekend',  label: '📆 Weekend' },
+    { key: 'bh',       label: '🏖️ Bank Hol' },
+    { key: 'csr',      label: '📚 CSR' },
+  ];
+
+  let filtered = st.shifts;
+  if (shiftsFilter === 'worked')    filtered = st.workedShifts;
+  if (shiftsFilter === 'scheduled') filtered = st.scheduledShifts;
+  if (shiftsFilter === 'night')     filtered = st.shifts.filter(s => s.isNight);
+  if (shiftsFilter === 'weekend')   filtered = st.shifts.filter(s => s.isWeekend);
+  if (shiftsFilter === 'bh')        filtered = st.shifts.filter(s => s.isBH);
+  if (shiftsFilter === 'csr')       filtered = st.shifts.filter(s => s.isCSR || s.type === 'Training (CSR day)');
+
+  const filterHtml = filters.map(f => `
+    <button class="filter-btn ${shiftsFilter === f.key ? 'active' : ''}"
+      onclick="setShiftsFilter('${f.key}')">${f.label}</button>
+  `).join('');
+
+  const badgeClass = (s) => {
+    if (s.isTrain || s.type === 'Training (CSR day)') return 'badge-training';
+    if (s.isCSR)   return 'badge-csr';
+    if (s.isNight && s.isWeekend) return 'badge-nightwk';
+    if (s.isNight)   return 'badge-night';
+    if (s.isWeekend) return 'badge-weekend';
+    return 'badge-day';
+  };
+
+  const rows = filtered.map(s => {
+    const d       = s.dateObj;
+    const isFuture = d > today;
+    const dayName  = days[d.getDay()];
+    const dateNum  = d.getDate();
+    const monName  = months[d.getMonth()];
+    const bhMark   = s.isBH ? ' 🏖️' : '';
+    const loc      = s.loc ? s.loc.split('(')[0].trim() : '';
+
+    return `
+      <div class="shift-row ${isFuture ? 'shift-future' : ''}">
+        <div class="shift-date-box">
+          <div class="day">${dayName}</div>
+          <div>${dateNum}</div>
+          <div class="day">${monName}</div>
+        </div>
+        <div class="shift-info">
+          <div class="shift-title">${s.startTime}–${s.endTime}${bhMark}</div>
+          <div class="shift-sub">${loc || s.summary}</div>
+        </div>
+        <div class="shift-right">
+          <div class="shift-hrs">${s.hours}h</div>
+          <div><span class="shift-type-badge ${badgeClass(s)}">${s.type === 'Training (CSR day)' ? 'CSR/Training' : s.type}</span></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  const workedCount    = st.workedShifts.length;
+  const scheduledCount = st.scheduledShifts.length;
+
+  return `
+    <div class="shifts-filter">${filterHtml}</div>
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;font-size:13px">
+        <span style="color:var(--mid)">Showing <strong style="color:var(--navy)">${filtered.length}</strong> shifts</span>
+        <span style="color:var(--mid)"><strong style="color:var(--green)">${workedCount}</strong> worked · <strong style="color:var(--navy2)">${scheduledCount}</strong> upcoming</span>
+      </div>
+    </div>
+    <div class="card">
+      ${filtered.length === 0
+        ? '<div style="text-align:center;padding:24px;color:var(--mid);font-size:13px">No shifts match this filter</div>'
+        : rows}
+    </div>
+    <div class="last-updated">Shifts shown in reverse chronological order for upcoming, chronological for worked</div>
+  `;
+}
+
+function setShiftsFilter(f) {
+  shiftsFilter = f;
+  if (currentStats) {
+    document.getElementById('shifts-content').innerHTML = renderShifts(currentStats);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER SETTINGS
+// ═══════════════════════════════════════════════════════
+
+function renderSettings(cfg) {
+  return `
+    <div class="setup-screen">
+      <h2>Settings</h2>
+      <p>Update your GRS link or contract details. Changes take effect on next refresh.</p>
+
+      <div class="field">
+        <label>GRS iCal Link</label>
+        <input type="url" id="s-ical" value="${cfg.icalUrl || ''}" />
+        <p class="hint">Your personal GRS calendar link. Never share this.</p>
+      </div>
+
+      <hr class="section-divider">
+      <p class="settings-section-title">Contract Details</p>
+
+      <div class="field">
+        <label>Arrangement Start Date</label>
+        <input type="date" id="s-start" value="${cfg.startDate || ''}" />
+      </div>
+
+      <div class="two-col">
+        <div class="field">
+          <label>Weekly Hours</label>
+          <input type="number" id="s-weekly" value="${cfg.weeklyHours}" step="0.01" />
+        </div>
+        <div class="field">
+          <label>AL Entitlement (hrs)</label>
+          <input type="number" id="s-al" value="${cfg.alHours}" step="0.01" />
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="field">
+          <label>BH Deduction (hrs)</label>
+          <input type="number" id="s-bh" value="${cfg.bhDeduction}" step="0.5" />
+        </div>
+        <div class="field">
+          <label>Standard Shift (hrs)</label>
+          <input type="number" id="s-shift" value="${cfg.shiftHours}" step="0.5" />
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="field">
+          <label>Training Shift (hrs)</label>
+          <input type="number" id="s-train" value="${cfg.trainingHours}" step="0.5" />
+        </div>
+        <div class="field">
+          <label>CSR Shift (hrs)</label>
+          <input type="number" id="s-csr" value="${cfg.csrHours}" step="0.5" />
+        </div>
+      </div>
+
+      <button class="primary-btn" onclick="saveSettings()">Save & Refresh →</button>
+
+      <hr class="section-divider">
+      <p style="font-size:12px;color:var(--mid);text-align:center">
+        All data is stored only on this device. Your iCal link is never sent to any server.
+      </p>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════
+// DATA FETCHING
+// ═══════════════════════════════════════════════════════
+
+async function fetchIcal(url) {
+  // Use Netlify function as proxy to avoid CORS restrictions
+  const proxy = `/api/fetch-ical?url=${encodeURIComponent(url)}`;
+  const resp  = await fetch(proxy);
+  if (!resp.ok) throw new Error(`Failed to fetch calendar (${resp.status})`);
+  return resp.text();
+}
+
+// ═══════════════════════════════════════════════════════
+// MAIN FLOW
+// ═══════════════════════════════════════════════════════
+
+let currentStats = null;
+let currentCfg   = null;
+
+async function refreshData() {
+  const cfg = loadConfig();
+  if (!cfg) return;
+
+  const btn = document.getElementById('refresh-btn');
+  btn.classList.add('loading');
+  btn.textContent = '↻ Loading…';
+
+  try {
+    const icalText = await fetchIcal(cfg.icalUrl);
+    const { shifts, startDate, endDate } = processEvents(parseIcal(icalText), cfg);
+    const stats = calculateStats(shifts, startDate, endDate, cfg);
+
+    currentStats = stats;
+    currentCfg   = cfg;
+
+    document.getElementById('dashboard-content').innerHTML = renderDashboard(stats, cfg);
+    document.getElementById('forecast-content').innerHTML  = renderForecast(stats, cfg);
+    document.getElementById('bankhols-content').innerHTML  = renderBankHols(stats, cfg);
+    document.getElementById('shifts-content').innerHTML    = renderShifts(stats);
+    document.getElementById('settings-content').innerHTML  = renderSettings(cfg);
+
+    document.getElementById('header-sub').textContent =
+      `Year ${stats.ahYear} · ${stats.shifts.length} shifts loaded`;
+
+  } catch (err) {
+    const errHtml = `<div class="error-box">
+      <strong>Could not load calendar</strong><br>
+      ${err.message}<br><br>
+      Check your GRS iCal link in Settings and make sure you have an internet connection.
+    </div>`;
+    document.getElementById('dashboard-content').innerHTML = errHtml;
+  } finally {
+    btn.classList.remove('loading');
+    btn.textContent = '↻ Refresh';
+  }
+}
+
+function showTab(name) {
+  document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
+  document.getElementById(`tab-${name}`).style.display = 'block';
+  event.target.classList.add('active');
+}
+
+function saveAndLoad() {
+  const cfg = {
+    icalUrl:       document.getElementById('ical-url').value.trim(),
+    startDate:     document.getElementById('start-date').value,
+    weeklyHours:   parseFloat(document.getElementById('weekly-hours').value),
+    alHours:       parseFloat(document.getElementById('al-hours').value),
+    bhDeduction:   parseFloat(document.getElementById('bh-deduction').value),
+    shiftHours:    parseFloat(document.getElementById('shift-hours').value),
+    trainingHours: parseFloat(document.getElementById('training-hours').value),
+    csrHours:      parseFloat(document.getElementById('csr-hours').value),
+  };
+
+  if (!cfg.icalUrl || !cfg.startDate) {
+    alert('Please enter your GRS iCal link and arrangement start date.');
+    return;
+  }
+
+  saveConfig(cfg);
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('main-nav').style.display = 'flex';
+  document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+  document.getElementById('tab-dashboard').style.display = 'block';
+  refreshData();
+}
+
+function saveSettings() {
+  const cfg = {
+    icalUrl:       document.getElementById('s-ical').value.trim(),
+    startDate:     document.getElementById('s-start').value,
+    weeklyHours:   parseFloat(document.getElementById('s-weekly').value),
+    alHours:       parseFloat(document.getElementById('s-al').value),
+    bhDeduction:   parseFloat(document.getElementById('s-bh').value),
+    shiftHours:    parseFloat(document.getElementById('s-shift').value),
+    trainingHours: parseFloat(document.getElementById('s-train').value),
+    csrHours:      parseFloat(document.getElementById('s-csr').value),
+  };
+  saveConfig(cfg);
+  currentCfg = cfg;
+  showTab('dashboard');
+  refreshData();
+}
+
+// ── INIT ──
+window.addEventListener('load', () => {
+  const cfg = loadConfig();
+  if (cfg) {
+    document.getElementById('setup-screen').style.display = 'none';
+    document.getElementById('main-nav').style.display = 'flex';
+    document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+    document.getElementById('tab-dashboard').style.display = 'block';
+    document.getElementById('settings-content').innerHTML = renderSettings(cfg);
+    refreshData();
+  }
+});
+</script>
+
+<!-- ── PWA INSTALL PROMPT ── -->
+<div id="install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--navy2);color:white;padding:14px 16px;z-index:200;display:none;align-items:center;justify-content:space-between;gap:12px">
+  <div style="font-size:13px;line-height:1.4">
+    <strong>Install AH Tracker</strong><br>
+    <span style="color:rgba(255,255,255,0.7);font-size:12px">Add to your home screen for quick access</span>
+  </div>
+  <div style="display:flex;gap:8px;flex-shrink:0">
+    <button onclick="installApp()" style="background:var(--teal2);color:white;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer">Install</button>
+    <button onclick="dismissInstall()" style="background:rgba(255,255,255,0.15);color:white;border:none;border-radius:8px;padding:8px 10px;font-size:13px;cursor:pointer">✕</button>
+  </div>
+</div>
+
+<!-- iOS install hint (shown once) -->
+<div id="ios-install-hint" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--navy2);color:white;padding:14px 16px;z-index:200">
+  <div style="font-size:13px;line-height:1.6">
+    <strong>Install on iPhone:</strong> tap <strong>Share</strong> (□↑) then <strong>"Add to Home Screen"</strong>
+  </div>
+  <button onclick="dismissIosHint()" style="position:absolute;top:10px;right:12px;background:none;color:white;border:none;font-size:18px;cursor:pointer">✕</button>
+</div>
+
+<script>
+// ── PWA / SERVICE WORKER ──
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+
+// ── INSTALL PROMPT (Android/Chrome) ──
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (!localStorage.getItem('install_dismissed')) {
+    document.getElementById('install-banner').style.display = 'flex';
+  }
+});
+
+function installApp() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(() => {
+    deferredPrompt = null;
+    document.getElementById('install-banner').style.display = 'none';
+  });
+}
+
+function dismissInstall() {
+  localStorage.setItem('install_dismissed', '1');
+  document.getElementById('install-banner').style.display = 'none';
+}
+
+// ── iOS INSTALL HINT ──
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+
+if (isIOS && !isStandalone && !localStorage.getItem('ios_hint_dismissed')) {
+  setTimeout(() => {
+    document.getElementById('ios-install-hint').style.display = 'block';
+  }, 3000);
+}
+
+function dismissIosHint() {
+  localStorage.setItem('ios_hint_dismissed', '1');
+  document.getElementById('ios-install-hint').style.display = 'none';
+}
+</script>
+
+</body>
+</html>
