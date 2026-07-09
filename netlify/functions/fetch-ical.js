@@ -22,19 +22,25 @@ exports.handler = async (event) => {
   try {
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; AH-Tracker/1.0)',
-        'Accept': 'text/calendar, */*',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/calendar, text/plain, */*',
+        'Accept-Language': 'en-GB,en;q=0.9',
+        'Cache-Control': 'no-cache',
       },
     });
+
+    const body = await response.text();
 
     if (!response.ok) {
       return {
         statusCode: response.status,
-        body: JSON.stringify({ error: `GRS returned ${response.status}` }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          error: `GRS returned ${response.status}`,
+          detail: body.substring(0, 200),
+        }),
       };
     }
-
-    const icalText = await response.text();
 
     return {
       statusCode: 200,
@@ -43,12 +49,16 @@ exports.handler = async (event) => {
         'Access-Control-Allow-Origin': '*',
         'Cache-Control': 'no-cache',
       },
-      body: icalText,
+      body,
     };
   } catch (err) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        error: 'Function fetch error',
+        detail: err.message,
+      }),
     };
   }
 };
